@@ -1,50 +1,66 @@
 import config from '../config';
 import { BadRequestError } from '../errors/bad-request.error';
-import { InternalServerError } from '../errors/internal-server.error';
 import { NotFoundError } from '../errors/not-found.error';
 import { UnauthorizedError } from '../errors/unauthorized.error';
 import { UserRepository } from '../repository/user.repository';
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { customAlphabet } from 'nanoid';
-import { sha1 } from '../utils/hash.util';
-import mailService from './mail.service';
-import { OAuth2Client } from 'google-auth-library';
 import { encode, encryptionKey } from './crypto.service';
-import { encodedJWTCacheManager, otpDeleteAccountCacheManager, profileCacheManager } from './cache/entities';
-
-const nanoid = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', 16);
-const numericNanoid = customAlphabet('0123456789', 6);
-const googleAuthClient = new OAuth2Client(config.GOOGLE_CLIENT_ID, config.GOOGLE_CLIENT_SECRET, 'postmessage');
+import { encodedJWTCacheManager } from './cache/entities';
+import { OtpRepository } from '../repository/otp.repository';
+import { DealerStatus, IUser } from '../models/user.model';
 
 class AuthService {
-  constructor(private readonly _userRepository: UserRepository) {
+  constructor(
+    private readonly _userRepository: UserRepository,
+    private readonly _otpRepository: OtpRepository
+  ) { }
+
+  private generateOtp(): string {
+    const min = 100000;
+    const max = 999999;
+    const value = Math.floor(Math.random() * (max - min + 1)) + min;
+
+    return value.toString();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async login(params: { email: string, password: string }) {
-    const { email, password } = params;
-    const user = await this._userRepository.getUserByEmailId(email);
-    if (!user) throw new NotFoundError('User not found');
-    if (!user.password) throw new BadRequestError('Reset password');
+  private getExpiryDate(): Date {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + 5);
 
-    // check if password is valid;
-    const success = await this.verifyHashPassword(password, user.password);
-    if (!success) throw new UnauthorizedError('Invalid Email or Password');
-
-    // generate JWT token;
-    const accessToken = await this.generateJWTToken(user._id);
-    if (!accessToken) throw new InternalServerError('Failed to generate accessToken');
-
-    return { accessToken };
+    return d;
   }
 
-  async verifyHashPassword(plainTextPassword: string, hashedPassword: string) {
-    return await bcrypt.compare(plainTextPassword, hashedPassword);
+  private isDetailsFilled(user: IUser): boolean {
+    if (user.firstName) return true;
+    if (user.buisnessName) return true;
+    if (user.email) return true;
+
+    return false;
   }
 
-  async hashPassword(plainTextPassword: string) {
-    return await bcrypt.hash(plainTextPassword, 10);
+  async requestOtp(params: { isdCode: string, phoneNumber: string }) {
+    const isdCode = params.isdCode;
+    const phoneNumber = params.phoneNumber;
+
+    let user = await this._userRepository.getByPhone(isdCode, phoneNumber);
+
+    if(!user) {
+      user = await this._userRepository.createMinimalUser({ isdCode, phoneNumber });
+    }
+
+    if(!user.isBlocked) {
+      throw new UnauthorizedError('User is blocked. Contact support');
+    }
+
+    const otp = this.generateOtp();
+    const phoneKey = isdCode + phoneNumber;
+
+    await this._otpRepository.createOtp({ phoneKey, otp, expiresAt: this.getExpiryDate() });
+
+    // TODO: integrate SMS/WhatsApp provider to send OTP
+    // console.log('OTP for', phoneKey, 'is', otp);
+
+    return { success: true, message: 'OTP send successfully' };
   }
 
   async generateJWTToken(userId: string) {
@@ -59,234 +75,119 @@ class AuthService {
     return token;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-  async signup(params: any) {
-    const { firstName, lastName, isdCode, phoneNumber, email, password } = params;
-    const existingUser = await this._userRepository.getUserByEmailId(email);
+  async verifyOtp(params: { isdCode: string, phoneNumber: string, otp: string }): Promise<{ status: DealerStatus | 'pending_details', accessToken?: string, message?: string }> {
+    const isdCode = params.isdCode;
+    const phoneNumber = params.phoneNumber;
+    const otp = params.otp;
 
-    if (existingUser) throw new BadRequestError('Email address already exists');
+    const user = await this._userRepository.getByPhone(isdCode, phoneNumber);
+    if(!user) {
+      throw new NotFoundError('User not found');
+    }
 
-    // get hashedPassword
-    const hashedPassword = await this.hashPassword(password);
-    const verificationCode = nanoid();
-    // send this verificationCode via email to verify.
-    const user = await this._userRepository.onBoardUser({
-      firstName, lastName, isdCode, phoneNumber, email, password: hashedPassword, verificationCode: sha1(verificationCode), img: {
-        link: 'default-profile.png',
-        source: 'bucket'
-      }
-    });
-    if (!user) throw new InternalServerError('Failed to Onboard user');
+    if(user.isBlocked) {
+      throw new BadRequestError('User is blocked. Contact support');
+    }
 
-    mailService.sendEmail(email, 'verification.ejs', { verificationCode }, 'Verify Your Email Address to Get Started! - WorkPlay Studio Pvt Ltd.');
+    const phoneKey = isdCode + phoneNumber;
+    const latestOtp = await this._otpRepository.getLatestOtp(phoneKey);
 
-    // generate JWT Token
-    const accessToken = await this.generateJWTToken(user._id);
-    if (!accessToken) throw new InternalServerError('Failed to generate accessToken');
+    if(!latestOtp) throw new BadRequestError('Otp not rqeuested');
+    if(latestOtp.isUsed) throw new BadRequestError('Otp already used');
 
-    return { accessToken };
+    const now = new Date();
+    if(latestOtp.expiresAt < now) throw new BadRequestError('Otp expired');
+
+    if(latestOtp.otp !== otp) throw new UnauthorizedError('Invalid Otp');
+
+    await this._otpRepository.markUsed(latestOtp._id);
+
+    const token = await this.generateJWTToken(user._id);
+
+    const detailsFilled = this.isDetailsFilled(user);
+
+     if (!detailsFilled) {
+      return {
+        status: 'pending_details',
+        accessToken: token,
+        message: 'Please complete your profile details.',
+      };
+    }
+
+    if (user.status !== DealerStatus.APPROVED) {
+      return {
+        status: user.status,
+        accessToken: token,
+        message: 'Your account is pending admin approval.',
+      };
+    }
+
+    return {
+      status: DealerStatus.APPROVED,
+      accessToken: token
+    };
   }
 
   async profile(userId: string) {
-    const cached = await profileCacheManager.get({ userId });
-    if (!cached) {
-      const user = await this._userRepository.getUserById(userId);
-      if (!user) throw new NotFoundError('User not found');
-
-      // set cache;
-      await profileCacheManager.set({ userId }, user);
-      return user;
-    }
-    return cached;
-  }
-
-  async updateProfile(params: {
-    firstName: string, lastName: string, isdCode?: string, phoneNumber?: string, _id: string, bio?: string, location?: string, company?: { name?: string, url?: string }, socials?: {
-      twitter?: string,
-      github?: string,
-      facebook?: string,
-      instagram?: string,
-      linkedin?: string,
-    }
-  }) {
-    const { firstName, lastName, isdCode, phoneNumber, _id, bio, location, socials, company } = params;
-    const user = await this._userRepository.updateUser({ firstName, lastName, isdCode, phoneNumber, _id, bio, location, socials, company });
+    const user = await this._userRepository.getById(userId);
     if (!user) throw new NotFoundError('User not found');
 
     return user;
   }
 
-  async resendVerificationLink(userId: string) {
-    const userExists = await this._userRepository.getUserById(userId);
-    if (userExists?.verified) throw new BadRequestError('Email already verified');
-
-    const verificationCode = nanoid();
-    const user = await this._userRepository.updateVerificationCode(userId, sha1(verificationCode));
-    if (!user) throw new InternalServerError('Failed to generate verification code');
-
-    // send email with newVerificationCode;
-    mailService.sendEmail(user.email, 'verification.ejs', { verificationCode }, 'Verify Your Email Address to Get Started! - WorkPlay Studio Pvt Ltd.');
-
-    return true;
-  }
-
-  async verifyEmail(code: string) {
-    const user = await this._userRepository.verifyUser(code);
-    if (!user) throw new BadRequestError('Invalid Code');
-
-    const newVerificationCode = nanoid();
-    await this._userRepository.updateVerificationCode(user.id, sha1(newVerificationCode));
-
-    return true;
-  }
-
-  async generateResetPasswordLink(email: string) {
-    const userExists = await this._userRepository.getUserByEmailId(email);
-    if (!userExists) throw new NotFoundError('User not found');
-
-    const verificationCode = nanoid();
-    const user = await this._userRepository.updateVerificationCode(userExists._id, sha1(verificationCode));
-    if (!user) throw new InternalServerError('Failed to generate verification code');
-
-    // send mail
-    mailService.sendEmail(user.email, 'reset-password.ejs', { verificationCode, firstName: user.firstName }, 'Reset Your Password: Regain Access to Your Account! - WorkPlay Studio Pvt Ltd.');
-
-    return true;
-  }
-
-  async verifyResetPasswordCode(code: string) {
-    const user = await this._userRepository.getUserWithVerificationCode(code);
-    if (!user) throw new BadRequestError('Invalid code');
-
-    return true;
-  }
-
-  async resetPassword(code: string, password: string) {
-    const user = await this._userRepository.getUserWithVerificationCode(code);
-    if (!user) throw new BadRequestError('Invalid code');
-
-    const hashedPassword = await this.hashPassword(password);
-    const passwordUpdated = await this._userRepository.resetPassword(code, hashedPassword);
-    if (!passwordUpdated) throw new InternalServerError('Failed to reset password');
-
-    // generate new code after resetting password
-    const newVerificationCode = nanoid();
-    await this._userRepository.updateVerificationCode(user.id, sha1(newVerificationCode));
-
-    // send mail
-    mailService.sendEmail(user.email, 'reset-password-success.ejs', { firstName: user.firstName }, 'Password Reset Successfull: Login Now! - WorkPlay Studio Pvt Ltd.');
-
-    return true;
-  }
-
-  async googleOAuthHandler(token: string) {
-    return new Promise(async (resolve, reject) => {
-      googleAuthClient
-        .verifyIdToken({
-          idToken: token,
-        })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .then(async (resp: any) => {
-          const {
-            email_verified,
-            family_name,
-            given_name,
-            email,
-            picture: imgURL,
-          } = resp['payload'];
-          resolve({
-            email_verified,
-            family_name,
-            given_name,
-            email,
-            picture: imgURL,
-          });
-        })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .catch((err: any) => {
-          reject(err);
-        });
+  async updateProfile(params: {
+    userId: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    buisnessName?: string;
+    city?: string;
+    state?: string;
+    gstNumber?: string;
+  }) {
+    const updatedUser = await this._userRepository.updateDetails({
+      userId: params.userId,
+      firstName: params.firstName,
+      lastName: params.lastName,
+      email: params.email,
+      buisnessName: params.buisnessName,
+      city: params.city,
+      state: params.state,
+      gstNumber: params.gstNumber
     });
+
+    if(!updatedUser) throw new BadRequestError('Failed to update profile');
+
+    return updatedUser;
   }
 
-  async ssoLogin(params: { family_name: string; given_name: string, email: string, img: { link: string, source: string } }) {
-    const { family_name, given_name, email, img } = params;
+  async adminListUsers(status?: DealerStatus): Promise<IUser[]> {
+    const user = await this._userRepository.listUsers(status);
 
-    const userExists = await this._userRepository.getUserByEmailId(email);
-    if (!userExists) {
-      // create new user;
-      const verificationCode = nanoid();
-      // send this verificationCode via email to verify.
-      const user = await this._userRepository.onBoardUser({
-        firstName: given_name, lastName: family_name, email, verificationCode: sha1(verificationCode), verified: true, img
-      });
-      if (!user) throw new InternalServerError('Failed to Onboard user');
+    return user;
+  }
 
-      return user._id;
+  async adminGetUserById(userId: string): Promise<IUser> {
+    const user = await this._userRepository.getById(userId);
+    if(!user) throw new NotFoundError('User not found');
+
+    return user;
+  }
+
+  async adminUpdateStatus(userId: string, status: DealerStatus): Promise<IUser> {
+    const user = await this._userRepository.updateStatus(userId, status);
+    if(!user) throw new NotFoundError('User not found');
+
+    return user;
+  }
+
+  async adminBlockUser(userId: string, isBlocked: boolean): Promise<IUser> {
+    const user = await this._userRepository.blockUser(userId, isBlocked);
+    if (!user) {
+      throw new BadRequestError('User not found');
     }
-
-    if (!userExists.verified) {
-      const user = await this._userRepository.verifyUserId(userExists._id);
-      if (!user) throw new InternalServerError('Failed to verify user');
-    }
-
-    return userExists._id;
+    return user;
   }
-
-  async sso(code: string) {
-    try {
-      const { tokens } = await googleAuthClient.getToken(code);
-      if (!tokens.id_token) throw new BadRequestError('Code Invalid or Expired');
-
-      const { family_name, given_name, email, picture } = await this.googleOAuthHandler(tokens.id_token) as { family_name: string; given_name: string, email: string, picture: string };
-
-      // signup if user-email doesnt exist in the platform
-      const userId = await this.ssoLogin({ family_name, given_name, email, img: { link: picture, source: 'oauth' } });
-      if (!userId) throw new UnauthorizedError('Code Invalid or Expired');
-
-      // generate JWT Token
-      const accessToken = await this.generateJWTToken(userId);
-      if (!accessToken) throw new InternalServerError('Failed to generate accessToken');
-
-      return { accessToken };
-    } catch (error) {
-      throw new BadRequestError('Code Invalid or Expired');
-    }
-  }
-
-  async updateProfileImage(userId: string, fileName: string) {
-    const updatedProfile = await this._userRepository.updateUserProfileImage(userId, fileName);
-    if (!updatedProfile) throw new InternalServerError('Failed to update profile image');
-
-    return true;
-  }
-
-  async generateAccountDeletionCode(userId: string) {
-    const user = await this._userRepository.getUserById(userId);
-    if (!user) throw new NotFoundError('User not found');
-
-    const code = numericNanoid();
-    await otpDeleteAccountCacheManager.set({ userId }, { code });
-
-    mailService.sendEmail(user.email, 'delete-account.ejs', { firstName: user.firstName, code }, 'Here\'s Account Deletion Secure Code');
-    return true;
-  }
-
-  async deleteAccount(code: string, userId: string) {
-    const storedOTP = await otpDeleteAccountCacheManager.get({ userId });
-    if (storedOTP?.code !== code) {
-      throw new BadRequestError('Invalid OTP');
-    }
-
-    const updatedProfile = await this._userRepository.deleteAccount(userId);
-    if (!updatedProfile) throw new InternalServerError('Failed to delete account');
-
-    // set new token in place of existing in cache
-    await this.generateJWTToken(userId);
-
-    return true;
-  }
-
 }
 
-export default new AuthService(new UserRepository());
+export default new AuthService(new UserRepository(), new OtpRepository());

@@ -1,107 +1,101 @@
-import userModel, { IUser } from '../models/user.model';
-import { sha1 } from '../utils/hash.util';
+import userModel, { IUser, DealerStatus } from '../models/user.model';
 
-export interface IOnBoardUserParams {
-  firstName: string;
-  lastName: string;
-  isdCode?: string;
-  phoneNumber?: string;
-  email: string;
-  password?: string;
-  verificationCode: string;
-  verified?: boolean;
-  img: {
-    link: string;
-    source: string;
-  }
+export interface ICreateMinimalUserParams {
+  isdCode: string;
+  phoneNumber: string;
+}
+
+export interface IUpdateUserDetailsParams {
+  userId: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  buisnessName?: string;
+  city?: string;
+  state?: string;
+  gstNumber?: string;
 }
 
 export class UserRepository {
   private _model = userModel;
 
-  async getUserByEmailId(email: string): Promise<IUser | null> {
-    return this._model.findOne({ email });
+  async getByPhone(isdCode: string, phoneNumber: string): Promise<IUser | null> {
+    return this._model.findOne({ isdCode, phoneNumber });
   }
 
-  async onBoardUser(params: IOnBoardUserParams): Promise<IUser> {
-    const {
-      firstName, lastName, isdCode, phoneNumber, email,
-      password, verificationCode, verified, img
-    } = params;
+  async getById(userId: string): Promise<IUser | null> {
+    return this._model.findById(userId);
+  }
 
+  async createMinimalUser(params: ICreateMinimalUserParams): Promise<IUser> {
     return this._model.create({
-      firstName, lastName, isdCode, phoneNumber,
-      email, password, verificationCode, verified, img
+      isdCode: params.isdCode,
+      phoneNumber: params.phoneNumber,
+      status: DealerStatus.PENDING,
+      isBlocked: false,
     });
   }
 
-  async getUserById(id: string) {
-    return this._model.findById(id).select('img _id firstName lastName email isdCode phoneNumber verified createdAt updatedAt __v');
-  }
+  async updateDetails(params: IUpdateUserDetailsParams): Promise<IUser | null> {
+    const update: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      buisnessName?: string;
+      city?: string;
+      state?: string;
+      gstNumber?: string;
+    } = {};
 
-  async updateUser(params: {
-    firstName: string, lastName: string, isdCode?: string, phoneNumber?: string, _id: string, bio?: string, location?: string, company?: { name?: string, url?: string }, socials?: {
-      twitter?: string,
-      github?: string,
-      facebook?: string,
-      instagram?: string,
-      linkedin?: string,
+    if (params.firstName) {
+      update.firstName = params.firstName;
     }
-  }) {
-    const { firstName, lastName, isdCode, phoneNumber, _id, bio, location, company, socials } = params;
+    if (params.lastName) {
+      update.lastName = params.lastName;
+    }
+    if (params.email) {
+      update.email = params.email;
+    }
+    if (params.buisnessName) {
+      update.buisnessName = params.buisnessName;
+    }
+    if (params.city) {
+      update.city = params.city;
+    }
+    if (params.state) {
+      update.state = params.state;
+    }
+    if (params.gstNumber) {
+      update.gstNumber = params.gstNumber;
+    }
 
-    return this._model.findByIdAndUpdate(_id, { firstName, lastName, isdCode, phoneNumber, bio, location, company, socials }, { new: true });
+    return this._model.findByIdAndUpdate(
+      params.userId,
+      update,
+      { new: true }
+    );
   }
 
-  async updateVerificationCode(userId: string, verificationCode: string) {
-    return this._model.findByIdAndUpdate(userId, {
-      verificationCode
-    }, { new: true });
+  async updateStatus(userId: string, status: DealerStatus): Promise<IUser | null> {
+    return this._model.findByIdAndUpdate(
+      userId,
+      { status },
+      { new: true }
+    );
   }
 
-  async verifyUser(code: string) {
-    return this._model.findOneAndUpdate({ verificationCode: sha1(code) }, {
-      verified: true
-    });
+  async blockUser(userId: string, isBlocked: boolean): Promise<IUser | null> {
+    return this._model.findByIdAndUpdate(
+      userId,
+      { isBlocked: isBlocked },
+      { new: true }
+    );
   }
 
-  async verifyUserId(userId: string) {
-    return this._model.findByIdAndUpdate(userId, {
-      verified: true
-    }, { new: true });
+  async listUsers(status?: DealerStatus): Promise<IUser[]> {
+    if (status) {
+      return this._model.find({ status: status });
+    }
+    return this._model.find({});
   }
-
-  async getUserWithVerificationCode(code: string) {
-    return this._model.findOne({ verificationCode: sha1(code) });
-  }
-
-  async resetPassword(code: string, hashedPassword: string) {
-    return this._model.findOneAndUpdate({ verificationCode: sha1(code) }, {
-      password: hashedPassword
-    }, { new: true });
-  }
-
-  async updateUserProfileImage(userId: string, fileName: string) {
-    return this._model.findOneAndUpdate({ _id: userId }, {
-      img: {
-        link: fileName,
-        source: 'bucket'
-      }
-    }, { new: true });
-  }
-
-  async deleteAccount(userId: string) {
-    return this._model.findOneAndUpdate({ _id: userId }, {
-      firstName: 'Deleted Account',
-      lastName: 'Deleted Account',
-      isdCode: 'Deleted Account',
-      phoneNumber: 'Deleted Account',
-      email: `${Math.random()}@email.com`,
-      deletedAccount: true,
-      verificationCode: null,
-      verified: false,
-      password: null,
-    }, { new: true });
-  }
-
 }

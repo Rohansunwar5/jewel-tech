@@ -1,12 +1,15 @@
 import mongoose from 'mongoose';
 
-const PASSWORD_MIN_LENGTH = 8;
+export enum DealerStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
 
 const userSchema = new mongoose.Schema(
   {
     firstName: {
       type: String,
-      required: true,
       trim: true,
       maxLength: 40,
     },
@@ -17,116 +20,69 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: true,
+      trim: true,
       minLength: 2,
     },
-    img: {
-      link: {
-        type: String,
-      },
-      source: {
-        type: String,
-        enum: ['oauth', 'bucket'],
-      },
-    },
-    password: {
+    buisnessName: {
       type: String,
-      minLength: PASSWORD_MIN_LENGTH,
+      trim: true,
+      maxLength: 80,
     },
     isdCode: {
       type: String,
+      required: true,
       minLength: 2,
       maxLength: 10,
     },
     phoneNumber: {
       type: String,
+      required: true,
       minLength: 5,
       maxLength: 40,
     },
-    verificationCode: {
+    city: {
       type: String,
-      required: true,
-      minLength: 2,
+      trim: true,
     },
-    verified: {
+    state: {
+      type: String,
+      trim: true,
+    },
+    gstNumber: {
+      type: String,
+      trim: true,
+    },
+    status: {
+      type: String,
+      enum: DealerStatus,
+      default: DealerStatus.PENDING,
+    },
+    isBlocked: {
       type: Boolean,
-      required: true,
       default: false,
     },
-    authProvider: {
-      type: String,
-      default: 'email',
-    },
-    deletedAccount: {
-      type: Boolean,
-    },
-    bio: {
-      type: String,
-    },
-    location: {
-      type: String,
-    },
-    socials: {
-      twitter: {
-        type: String,
-      },
-      github: {
-        type: String,
-      },
-      facebook: {
-        type: String,
-      },
-      instagram: {
-        type: String,
-      },
-      linkedin: {
-        type: String,
-      }
-    },
-    company: {
-      name: {
-        type: String,
-      },
-      url: {
-        type: String,
-      }
-    }
   },
   { timestamps: true }
 );
 
 userSchema.index({ email: 1 });
-userSchema.index({ verificationCode: 1 });
+userSchema.index({ isdCode: 1, phoneNumber: 1 }, { unique: true });
 
-export interface IUser extends mongoose.Schema {
+export interface IUser extends mongoose.Document {
   _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  img?: {
-    link: string;
-    source: string;
-  };
-  phoneNumber: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  buisnessName?: string;
   isdCode: string;
-  verified: boolean;
-  password: string;
-  authProvider: string;
-  verificationCode: string;
-  deletedAccount?: boolean;
-  bio: string;
-  location: string;
-  socials?: {
-    twitter?: string;
-    github?: string;
-    facebook?: string;
-    instagram?: string;
-    linkedin?: string;
-  };
-  company?: {
-    name?: string;
-    url?: string;
-  }
+  phoneNumber: string;
+  gstNumber?: string;
+  city?: string;
+  state?: string;
+  status: DealerStatus;
+  isBlocked: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export default mongoose.model<IUser>('User', userSchema);

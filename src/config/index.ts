@@ -9,6 +9,7 @@ const config = {
   REDIS_PORT: process.env.REDIS_PORT! as string,
   PORT: process.env.PORT! as string,
   JWT_SECRET: process.env.JWT_SECRET! as string,
+  ADMIN_JWT_SECRET: process.env.ADMIN_JWT_SECRET! as string,
   ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY! as string,
   CLOUDWATCH_LOG_GROUP_NAME: process.env.CLOUDWATCH_LOG_GROUP_NAME! as string,
   CLOUDWATCH_LOGS_ID: process.env.CLOUDWATCH_LOGS_ID! as string,
@@ -24,6 +25,7 @@ const config = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET! as string,
   NOTIFY_TO: process.env.NOTIFY_TO! as string,
   JWT_CACHE_ENCRYPTION_KEY: process.env.JWT_CACHE_ENCRYPTION_KEY! as string,
+  ADMIN_JWT_CACHE_ENCRYPTION_KEY: process.env.ADMIN_JWT_CACHE_ENCRYPTION_KEY! as string,
   DEFAULT_COUNTRY_CODE: 'IN',
 };
 
