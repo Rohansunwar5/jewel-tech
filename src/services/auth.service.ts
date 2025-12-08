@@ -168,8 +168,8 @@ class AuthService {
     return user;
   }
 
-  async adminGetUserById(userId: string): Promise<IUser> {
-    const user = await this._userRepository.getById(userId);
+  async adminGetUserById(id: string): Promise<IUser> {
+    const user = await this._userRepository.getById(id);
     if(!user) throw new NotFoundError('User not found');
 
     return user;

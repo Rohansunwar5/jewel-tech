@@ -48,24 +48,24 @@ export const adminListUsers = async (req: Request, res: Response, next: NextFunc
 };
 
 export const adminGetUserById = async (req: Request, res: Response, next: NextFunction) => {
-  const { userId } = req.params;
-  const response = await authService.adminGetUserById(userId);
+  const { id } = req.params;
+  const response = await authService.adminGetUserById(id);
 
   next(response);
 };
 
 export const adminUpdateStatus = async (req: Request, res: Response, next: NextFunction) => {
-  const { userId } = req.params;
+  const { id } = req.params;
   const { status } = req.body;
-  const response = await authService.adminUpdateStatus(userId, status);
+  const response = await authService.adminUpdateStatus(id, status);
 
   next(response);
 };
 
 export const adminBlockUser = async (req: Request, res: Response, next: NextFunction) => {
-  const { userId } = req.params;
+  const { id } = req.params;
   const { isBlocked } = req.body;
-  const response = await authService.adminBlockUser(userId, isBlocked);
+  const response = await authService.adminBlockUser(id, isBlocked);
 
   next(response);
 };

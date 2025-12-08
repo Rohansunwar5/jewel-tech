@@ -9,8 +9,8 @@ export const listActiveProducts = async (req: Request, res: Response, next: Next
 };
 
 export const getProductById = async (req: Request, res: Response, next: NextFunction) => {
-  const productId = req.params.id;
-  const response = await productService.getProductById(productId);
+  const id = req.params.id;
+  const response = await productService.getProductById(id);
 
   next(response);
 };

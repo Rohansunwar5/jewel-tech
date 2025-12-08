@@ -13,13 +13,13 @@ adminRouter.post('/login', loginValidator, asyncHandler(adminLogin));
 adminRouter.post('/signup', signupValidator, asyncHandler(adminSignup));
 adminRouter.get('/profile', isAdminLoggedIn, asyncHandler(adminProfile));
 adminRouter.post('/reset-password', asyncHandler(generateResetPasswordLink));
+adminRouter.post('/create-product',isAdminLoggedIn, asyncHandler(adminCreateProduct));
+adminRouter.patch('/product/:id',isAdminLoggedIn, asyncHandler(adminUpdateProduct));
 adminRouter.get('/reset-password/:code', asyncHandler(verifyResetPasswordCode));
 adminRouter.patch('/reset-password/:code', asyncHandler(resetPassword));
 
 //product
 adminRouter.get('/list-products',isAdminLoggedIn, asyncHandler(adminListProducts));
-adminRouter.post('/create-product',isAdminLoggedIn, asyncHandler(adminCreateProduct));
-adminRouter.patch('/:id',isAdminLoggedIn, asyncHandler(adminUpdateProduct));
 adminRouter.delete('/:id',isAdminLoggedIn, asyncHandler(adminDeleteProduct));
 
 //user
