@@ -8,6 +8,7 @@ import { encode, encryptionKey } from './crypto.service';
 import { encodedJWTCacheManager } from './cache/entities';
 import { OtpRepository } from '../repository/otp.repository';
 import { DealerStatus, IUser } from '../models/user.model';
+import logger from '../utils/logger';
 
 class AuthService {
   constructor(
@@ -58,7 +59,7 @@ class AuthService {
     await this._otpRepository.createOtp({ phoneKey, otp, expiresAt: this.getExpiryDate() });
 
     // TODO: integrate SMS/WhatsApp provider to send OTP
-    // console.log('OTP for', phoneKey, 'is', otp);
+    logger.log('OTP for', phoneKey, 'is', otp);
 
     return { success: true, message: 'OTP send successfully' };
   }
