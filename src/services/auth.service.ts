@@ -48,7 +48,7 @@ class AuthService {
       user = await this._userRepository.createMinimalUser({ isdCode, phoneNumber });
     }
 
-    if(!user.isBlocked) {
+    if (user.isBlocked) {
       throw new UnauthorizedError('User is blocked. Contact support');
     }
 
