@@ -59,7 +59,7 @@ class AuthService {
     await this._otpRepository.createOtp({ phoneKey, otp, expiresAt: this.getExpiryDate() });
 
     // TODO: integrate SMS/WhatsApp provider to send OTP
-    logger.log('OTP for', phoneKey, 'is', otp);
+    logger.info(`OTP for ${phoneKey} is ${otp}`);
 
     return { success: true, message: 'OTP send successfully' };
   }
