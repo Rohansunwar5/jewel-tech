@@ -4,12 +4,14 @@ import authService from '../services/auth.service';
 export const requestOtp = async (req: Request, res: Response, next: NextFunction) => {
   const { isdCode, phoneNumber } = req.body;
   const response = await authService.requestOtp({ isdCode, phoneNumber });
+
   next(response);
 };
 
 export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
   const { isdCode, phoneNumber, otp } = req.body;
   const response = await authService.verifyOtp({ isdCode, phoneNumber, otp });
+  
   next(response);
 };
 

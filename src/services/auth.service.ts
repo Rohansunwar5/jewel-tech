@@ -16,12 +16,16 @@ class AuthService {
     private readonly _otpRepository: OtpRepository
   ) { }
 
-  private generateOtp(): string {
-    const min = 100000;
-    const max = 999999;
-    const value = Math.floor(Math.random() * (max - min + 1)) + min;
+  // private generateOtp(): string {
+  //   const min = 100000;
+  //   const max = 999999;
+  //   const value = Math.floor(Math.random() * (max - min + 1)) + min;
 
-    return value.toString();
+  //   return value.toString();
+  // }
+
+  private generateOtp(): string {
+    return "123456"; // static OTP for testing
   }
 
   private getExpiryDate(): Date {
@@ -45,9 +49,7 @@ class AuthService {
 
     let user = await this._userRepository.getByPhone(isdCode, phoneNumber);
 
-    if(!user) {
-      user = await this._userRepository.createMinimalUser({ isdCode, phoneNumber });
-    }
+    if(!user) { user = await this._userRepository.createMinimalUser({ isdCode, phoneNumber })}
 
     if (user.isBlocked) {
       throw new UnauthorizedError('User is blocked. Contact support');
