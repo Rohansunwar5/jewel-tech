@@ -25,7 +25,7 @@ class AuthService {
   // }
 
   private generateOtp(): string {
-    return "123456"; // static OTP for testing
+    return '123456'; // static OTP for testing
   }
 
   private getExpiryDate(): Date {
@@ -49,7 +49,7 @@ class AuthService {
 
     let user = await this._userRepository.getByPhone(isdCode, phoneNumber);
 
-    if(!user) { user = await this._userRepository.createMinimalUser({ isdCode, phoneNumber })}
+    if(!user) { user = await this._userRepository.createMinimalUser({ isdCode, phoneNumber });}
 
     if (user.isBlocked) {
       throw new UnauthorizedError('User is blocked. Contact support');

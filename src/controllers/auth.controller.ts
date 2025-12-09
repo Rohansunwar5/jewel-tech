@@ -11,7 +11,7 @@ export const requestOtp = async (req: Request, res: Response, next: NextFunction
 export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
   const { isdCode, phoneNumber, otp } = req.body;
   const response = await authService.verifyOtp({ isdCode, phoneNumber, otp });
-  
+
   next(response);
 };
 
