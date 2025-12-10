@@ -1,10 +1,10 @@
-import { BadRequestError } from "../errors/bad-request.error";
-import { ICategory } from "../models/category.model";
-import { CategoryRepository, ICreateCategoryParams, IUpdateCategoryParams } from "../repository/category.repository";
+import { BadRequestError } from '../errors/bad-request.error';
+import { ICategory } from '../models/category.model';
+import { CategoryRepository, ICreateCategoryParams, IUpdateCategoryParams } from '../repository/category.repository';
 
 class CategoryService {
     constructor( private readonly _categoryRepository: CategoryRepository) {}
-    
+
     async listActiveCategories() {
         return this._categoryRepository.getActiveCategories();
     }

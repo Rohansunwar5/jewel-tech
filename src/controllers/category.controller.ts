@@ -1,9 +1,9 @@
-import { Request, NextFunction, Response } from "express";
-import categoryService from "../services/category.service";
+import { Request, NextFunction, Response } from 'express';
+import categoryService from '../services/category.service';
 
 export const listActiveCategories = async (req: Request, res: Response, next: NextFunction) => {
   const response = await categoryService.listActiveCategories();
-  
+
   next(response);
 };
 

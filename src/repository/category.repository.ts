@@ -1,4 +1,4 @@
-import categoryModel, { ICategory } from "../models/category.model";
+import categoryModel, { ICategory } from '../models/category.model';
 
 export interface ICreateCategoryParams {
   name: string;
