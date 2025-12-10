@@ -6,6 +6,7 @@ import contactRouter from './contact.route';
 import adminRouter from './admin.route';
 import productRouter from './product.route';
 import cartRouter from './cart.route';
+import categoryRouter from './category.route';
 
 const v1Router = Router();
 
@@ -15,6 +16,7 @@ v1Router.use('/auth', authRouter);
 v1Router.use('/contact', contactRouter);
 v1Router.use('/admin', adminRouter);
 v1Router.use('/product', productRouter);
+v1Router.use('/category', categoryRouter);
 v1Router.use('/cart', cartRouter);
 v1Router.get('/country', asyncHandler(country));
 
