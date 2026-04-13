@@ -26,8 +26,8 @@ const cloudwatchLogger = winston.createLogger({
       submissionRetryCount: 1,
       batchSize: 20,
       awsConfig: {
-        accessKeyId: config.AWS_ACCESS_ID,
-        secretAccessKey: config.AWS_SECRET,
+        accessKeyId: config.AWS_ACCESS_KEY_ID,
+        secretAccessKey: config.AWS_SECRET_ACCESS_KEY,
         region: config.AWS_REGION
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

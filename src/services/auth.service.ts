@@ -25,7 +25,7 @@ class AuthService {
   // }
 
   private generateOtp(): string {
-    return '123456'; // static OTP for testing
+    return '111111'; // static OTP for testing
   }
 
   private getExpiryDate(): Date {
