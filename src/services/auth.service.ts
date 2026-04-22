@@ -78,6 +78,35 @@ class AuthService {
     return token;
   }
 
+  // OTP-BYPASSED LOGIN — temporary while SMS service is not active.
+  // Finds or creates the user by phone, issues a JWT directly with no OTP check.
+  // Restore the OTP flow by routing the client back to requestOtp → verifyOtp.
+  async loginWithoutOtp(params: { isdCode: string; phoneNumber: string }): Promise<{ status: DealerStatus | 'pending_details'; accessToken: string; message?: string }> {
+    const { isdCode, phoneNumber } = params;
+
+    let user = await this._userRepository.getByPhone(isdCode, phoneNumber);
+    if (!user) {
+      user = await this._userRepository.createMinimalUser({ isdCode, phoneNumber });
+    }
+
+    if (user.isBlocked) {
+      throw new UnauthorizedError('User is blocked. Contact support');
+    }
+
+    const token = await this.generateJWTToken(user._id);
+    const detailsFilled = this.isDetailsFilled(user);
+
+    if (!detailsFilled) {
+      return { status: 'pending_details', accessToken: token, message: 'Please complete your profile details.' };
+    }
+
+    if (user.status !== DealerStatus.APPROVED) {
+      return { status: user.status, accessToken: token, message: 'Your account is pending admin approval.' };
+    }
+
+    return { status: DealerStatus.APPROVED, accessToken: token };
+  }
+
   async verifyOtp(params: { isdCode: string, phoneNumber: string, otp: string }): Promise<{ status: DealerStatus | 'pending_details', accessToken?: string, message?: string }> {
     const isdCode = params.isdCode;
     const phoneNumber = params.phoneNumber;
