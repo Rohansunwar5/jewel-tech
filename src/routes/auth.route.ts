@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asynchandler';
-import { adminBlockUser, adminGetUserById, adminListUsers, adminUpdateStatus, loginWithoutOtp, profile, requestOtp, updateProfile, verifyOtp } from '../controllers/auth.controller';
+import { adminBlockUser, adminGetUserById, adminListUsers, adminUpdateStatus, loginWithoutOtp, profile, updateProfile } from '../controllers/auth.controller';
 import isLoggedIn from '../middlewares/isLoggedIn.middleware';
 
 const authRouter = Router();
