@@ -24,6 +24,8 @@ const config = {
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID! as string,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET! as string,
   NOTIFY_TO: process.env.NOTIFY_TO! as string,
+  GMAIL_USER: process.env.GMAIL_USER! as string,
+  GMAIL_PASSWORD: process.env.GMAIL_PASSWORD! as string,
   JWT_CACHE_ENCRYPTION_KEY: process.env.JWT_CACHE_ENCRYPTION_KEY! as string,
   ADMIN_JWT_CACHE_ENCRYPTION_KEY: process.env.ADMIN_JWT_CACHE_ENCRYPTION_KEY! as string,
   DEFAULT_COUNTRY_CODE: 'IN',
