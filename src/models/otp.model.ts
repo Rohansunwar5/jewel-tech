@@ -2,9 +2,11 @@ import mongoose from 'mongoose';
 
 const otpSchema = new mongoose.Schema(
   {
-    phoneKey: {
+    email: {
       type: String,
       required: true,
+      trim: true,
+      lowercase: true,
     },
     otp: {
       type: String,
@@ -23,11 +25,11 @@ const otpSchema = new mongoose.Schema(
 );
 
 otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-otpSchema.index({ phoneKey: 1 });
+otpSchema.index({ email: 1 });
 
 export interface IOtp extends mongoose.Document {
   _id: string;
-  phoneKey: string;
+  email: string;
   otp: string;
   expiresAt: Date;
   isUsed: boolean;

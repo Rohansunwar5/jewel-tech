@@ -1,7 +1,7 @@
 import otpModel, { IOtp } from '../models/otp.model';
 
 export interface ICreateOtpParams {
-  phoneKey: string;
+  email: string;
   otp: string;
   expiresAt: Date;
 }
@@ -11,15 +11,15 @@ export class OtpRepository {
 
   async createOtp(params: ICreateOtpParams): Promise<IOtp> {
     return this._model.create({
-      phoneKey: params.phoneKey,
+      email: params.email,
       otp: params.otp,
       expiresAt: params.expiresAt,
     });
   }
 
-  async getLatestOtp(phoneKey: string): Promise<IOtp | null> {
+  async getLatestOtp(email: string): Promise<IOtp | null> {
     return this._model
-      .findOne({ phoneKey })
+      .findOne({ email })
       .sort({ createdAt: -1 });
   }
 
