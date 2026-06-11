@@ -1,38 +1,30 @@
 import { BadRequestError } from '../errors/bad-request.error';
-import { ses } from '../utils/ses.util';
+import { mailTransporter } from '../utils/nodemailer.util';
+import config from '../config';
 import ejs from 'ejs';
 import fs from 'fs';
 
 class MailService {
-  constructor(private readonly _ses = ses) { }
+  constructor(private readonly _transporter = mailTransporter) { }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async sendEmail(toEmail: string, templatePath: string, templateData: any, subject: string) {
-    const params = {
-      Destination: {
-        ToAddresses: [toEmail]
-      },
-      Message: {
-        Body: {
-          Html: {
-            Charset: 'UTF-8',
-            Data: ejs.render(fs.readFileSync(`src/templates/${templatePath}`, 'utf8'), templateData)
-          }
-        },
-        Subject: {
-          Charset: 'UTF-8',
-          Data: subject
-        }
-      },
-      Source: 'WorkPlay Studio Pvt Ltd. <no-reply@workplay.digital>',
-    };
+    const html = ejs.render(
+      fs.readFileSync(`src/templates/${templatePath}`, 'utf8'),
+      templateData
+    );
 
-    const response = await this._ses.sendEmail(params).promise();
-    if (!response) throw new BadRequestError('Failed to upload file');
+    const info = await this._transporter.sendMail({
+      from: `Roop Jewellers <${config.GMAIL_USER}>`,
+      to: toEmail,
+      subject,
+      html,
+    });
+
+    if (!info) throw new BadRequestError('Failed to send email');
 
     return {};
   }
-
 }
 
 export default new MailService();
