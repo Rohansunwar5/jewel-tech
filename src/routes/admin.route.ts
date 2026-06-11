@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asynchandler';
 
-import { loginValidator, signupValidator } from '../middlewares/validators/auth.validator';
+import { adminLoginValidator, adminSignupValidator } from '../middlewares/validators/auth.validator';
 import isAdminLoggedIn from '../middlewares/isAdminLoggedIn.middleware';
 import { adminLogin, adminProfile, adminSignup, generateResetPasswordLink, resetPassword, verifyResetPasswordCode } from '../controllers/admin.controller';
 import { adminCreateProduct, adminDeleteProduct, adminListProducts, adminUpdateProduct, uploadAssets } from '../controllers/product.controller';
@@ -11,8 +11,8 @@ import { uploadImage } from '../middlewares/multer.middleware';
 
 const adminRouter = Router();
 
-adminRouter.post('/login', loginValidator, asyncHandler(adminLogin));
-adminRouter.post('/signup', signupValidator, asyncHandler(adminSignup));
+adminRouter.post('/login', adminLoginValidator, asyncHandler(adminLogin));
+adminRouter.post('/signup', adminSignupValidator, asyncHandler(adminSignup));
 adminRouter.get('/profile', isAdminLoggedIn, asyncHandler(adminProfile));
 adminRouter.post('/reset-password', asyncHandler(generateResetPasswordLink));
 adminRouter.post('/create-product',isAdminLoggedIn, asyncHandler(adminCreateProduct));

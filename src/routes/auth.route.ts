@@ -1,15 +1,13 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asynchandler';
-import { adminBlockUser, adminGetUserById, adminListUsers, adminUpdateStatus, loginWithoutOtp, profile, updateProfile } from '../controllers/auth.controller';
+import { adminBlockUser, adminGetUserById, adminListUsers, adminUpdateStatus, profile, register, updateProfile, verifyOtp } from '../controllers/auth.controller';
 import isLoggedIn from '../middlewares/isLoggedIn.middleware';
+import { registerValidator, verifyOtpValidator } from '../middlewares/validators/auth.validator';
 
 const authRouter = Router();
 
-// OTP-BYPASSED LOGIN — temporary while SMS service is not active.
-// Swap the line below back to the two commented routes when SMS is ready.
-authRouter.post('/login', asyncHandler(loginWithoutOtp));
-// authRouter.post('/request-otp', asyncHandler(requestOtp));
-// authRouter.post('/verify-otp', asyncHandler(verifyOtp));
+authRouter.post('/register', registerValidator, asyncHandler(register));
+authRouter.post('/verify-otp', verifyOtpValidator, asyncHandler(verifyOtp));
 authRouter.get('/profile', isLoggedIn, asyncHandler(profile));
 authRouter.patch('/profile', isLoggedIn, asyncHandler(updateProfile));
 

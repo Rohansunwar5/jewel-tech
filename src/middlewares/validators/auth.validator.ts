@@ -1,19 +1,33 @@
 import { validateRequest } from '.';
 import { isRequired } from '../../utils/validator.utils';
 
-export const signupValidator = [
+export const adminLoginValidator = [
+  isRequired('email'),
+  isRequired('password'),
+  ...validateRequest
+];
+
+export const adminSignupValidator = [
   isRequired('firstName'),
   isRequired('lastName'),
-  isRequired('isdCode', true),
   isRequired('phoneNumber', true),
   isRequired('email'),
   isRequired('password'),
   ...validateRequest
 ];
 
-export const loginValidator = [
+export const registerValidator = [
+  isRequired('firstName'),
+  isRequired('lastName'),
   isRequired('email'),
-  isRequired('password'),
+  isRequired('isdCode', true),
+  isRequired('phoneNumber', true),
+  ...validateRequest
+];
+
+export const verifyOtpValidator = [
+  isRequired('email'),
+  isRequired('otp'),
   ...validateRequest
 ];
 

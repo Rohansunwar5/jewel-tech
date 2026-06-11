@@ -1,25 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import authService from '../services/auth.service';
 
-// OTP-BYPASSED LOGIN — temporary while SMS service is not active.
-// Remove this handler and re-enable requestOtp → verifyOtp flow when SMS is ready.
-export const loginWithoutOtp = async (req: Request, res: Response, next: NextFunction) => {
-  const { isdCode, phoneNumber } = req.body;
-  const response = await authService.loginWithoutOtp({ isdCode, phoneNumber });
-
-  next(response);
-};
-
-export const requestOtp = async (req: Request, res: Response, next: NextFunction) => {
-  const { isdCode, phoneNumber } = req.body;
-  const response = await authService.requestOtp({ isdCode, phoneNumber });
+export const register = async (req: Request, res: Response, next: NextFunction) => {
+  const { firstName, lastName, email, phoneNumber, isdCode, buisnessName, city, state, gstNumber } = req.body;
+  const response = await authService.register({
+    firstName, lastName, email, phoneNumber, isdCode, buisnessName, city, state, gstNumber,
+  });
 
   next(response);
 };
 
 export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
-  const { isdCode, phoneNumber, otp } = req.body;
-  const response = await authService.verifyOtp({ isdCode, phoneNumber, otp });
+  const { email, otp } = req.body;
+  const response = await authService.verifyOtp({ email, otp });
 
   next(response);
 };
