@@ -8,6 +8,7 @@ import { encode, encryptionKey } from './crypto.service';
 import { encodedJWTCacheManager } from './cache/entities';
 import { OtpRepository } from '../repository/otp.repository';
 import { DealerStatus, IUser } from '../models/user.model';
+import mailService from './mail.service';
 import logger from '../utils/logger';
 
 class AuthService {
@@ -16,16 +17,12 @@ class AuthService {
     private readonly _otpRepository: OtpRepository
   ) { }
 
-  // private generateOtp(): string {
-  //   const min = 100000;
-  //   const max = 999999;
-  //   const value = Math.floor(Math.random() * (max - min + 1)) + min;
-
-  //   return value.toString();
-  // }
-
   private generateOtp(): string {
-    return '111111'; // static OTP for testing
+    const min = 100000;
+    const max = 999999;
+    const value = Math.floor(Math.random() * (max - min + 1)) + min;
+
+    return value.toString();
   }
 
   private getExpiryDate(): Date {
@@ -35,35 +32,56 @@ class AuthService {
     return d;
   }
 
-  private isDetailsFilled(user: IUser): boolean {
-    if (user.firstName) return true;
-    if (user.buisnessName) return true;
-    if (user.email) return true;
+  async register(params: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    isdCode: string;
+    buisnessName?: string;
+    city?: string;
+    state?: string;
+    gstNumber?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const email = params.email.toLowerCase().trim();
 
-    return false;
-  }
+    let user = await this._userRepository.getByEmail(email);
 
-  async requestOtp(params: { isdCode: string, phoneNumber: string }) {
-    const isdCode = params.isdCode;
-    const phoneNumber = params.phoneNumber;
-
-    let user = await this._userRepository.getByPhone(isdCode, phoneNumber);
-
-    if(!user) { user = await this._userRepository.createMinimalUser({ isdCode, phoneNumber });}
+    if (!user) {
+      user = await this._userRepository.createMinimalUser({
+        isdCode: params.isdCode,
+        phoneNumber: params.phoneNumber,
+      });
+    }
 
     if (user.isBlocked) {
       throw new UnauthorizedError('User is blocked. Contact support');
     }
 
+    await this._userRepository.updateDetails({
+      userId: user._id,
+      firstName: params.firstName,
+      lastName: params.lastName,
+      email,
+      buisnessName: params.buisnessName,
+      city: params.city,
+      state: params.state,
+      gstNumber: params.gstNumber,
+    });
+
     const otp = this.generateOtp();
-    const phoneKey = isdCode + phoneNumber;
+    await this._otpRepository.createOtp({ email, otp, expiresAt: this.getExpiryDate() });
 
-    await this._otpRepository.createOtp({ phoneKey, otp, expiresAt: this.getExpiryDate() });
+    await mailService.sendEmail(
+      email,
+      'otp-verification.ejs',
+      { firstName: params.firstName, otp },
+      'Your Roop Jewellers verification code'
+    );
 
-    // TODO: integrate SMS/WhatsApp provider to send OTP
-    logger.info(`OTP for ${phoneKey} is ${otp}`);
+    logger.info(`OTP sent to ${email}`);
 
-    return { success: true, message: 'OTP send successfully' };
+    return { success: true, message: 'OTP sent to your email' };
   }
 
   async generateJWTToken(userId: string) {
@@ -78,73 +96,32 @@ class AuthService {
     return token;
   }
 
-  // OTP-BYPASSED LOGIN — temporary while SMS service is not active.
-  // Finds or creates the user by phone, issues a JWT directly with no OTP check.
-  // Restore the OTP flow by routing the client back to requestOtp → verifyOtp.
-  async loginWithoutOtp(params: { isdCode: string; phoneNumber: string }): Promise<{ status: DealerStatus | 'pending_details'; accessToken: string; message?: string }> {
-    const { isdCode, phoneNumber } = params;
-
-    let user = await this._userRepository.getByPhone(isdCode, phoneNumber);
-    if (!user) {
-      user = await this._userRepository.createMinimalUser({ isdCode, phoneNumber });
-    }
-
-    if (user.isBlocked) {
-      throw new UnauthorizedError('User is blocked. Contact support');
-    }
-
-    const token = await this.generateJWTToken(user._id);
-    const detailsFilled = this.isDetailsFilled(user);
-
-    if (!detailsFilled) {
-      return { status: 'pending_details', accessToken: token, message: 'Please complete your profile details.' };
-    }
-
-    if (user.status !== DealerStatus.APPROVED) {
-      return { status: user.status, accessToken: token, message: 'Your account is pending admin approval.' };
-    }
-
-    return { status: DealerStatus.APPROVED, accessToken: token };
-  }
-
-  async verifyOtp(params: { isdCode: string, phoneNumber: string, otp: string }): Promise<{ status: DealerStatus | 'pending_details', accessToken?: string, message?: string }> {
-    const isdCode = params.isdCode;
-    const phoneNumber = params.phoneNumber;
+  async verifyOtp(params: { email: string; otp: string }): Promise<{ status: DealerStatus; accessToken: string; message?: string }> {
+    const email = params.email.toLowerCase().trim();
     const otp = params.otp;
 
-    const user = await this._userRepository.getByPhone(isdCode, phoneNumber);
-    if(!user) {
+    const user = await this._userRepository.getByEmail(email);
+    if (!user) {
       throw new NotFoundError('User not found');
     }
 
-    if(user.isBlocked) {
+    if (user.isBlocked) {
       throw new BadRequestError('User is blocked. Contact support');
     }
 
-    const phoneKey = isdCode + phoneNumber;
-    const latestOtp = await this._otpRepository.getLatestOtp(phoneKey);
+    const latestOtp = await this._otpRepository.getLatestOtp(email);
 
-    if(!latestOtp) throw new BadRequestError('Otp not rqeuested');
-    if(latestOtp.isUsed) throw new BadRequestError('Otp already used');
+    if (!latestOtp) throw new BadRequestError('OTP not requested');
+    if (latestOtp.isUsed) throw new BadRequestError('OTP already used');
 
     const now = new Date();
-    if(latestOtp.expiresAt < now) throw new BadRequestError('Otp expired');
+    if (latestOtp.expiresAt < now) throw new BadRequestError('OTP expired');
 
-    if(latestOtp.otp !== otp) throw new UnauthorizedError('Invalid Otp');
+    if (latestOtp.otp !== otp) throw new UnauthorizedError('Invalid OTP');
 
     await this._otpRepository.markUsed(latestOtp._id);
 
     const token = await this.generateJWTToken(user._id);
-
-    const detailsFilled = this.isDetailsFilled(user);
-
-     if (!detailsFilled) {
-      return {
-        status: 'pending_details',
-        accessToken: token,
-        message: 'Please complete your profile details.',
-      };
-    }
 
     if (user.status !== DealerStatus.APPROVED) {
       return {
@@ -156,7 +133,7 @@ class AuthService {
 
     return {
       status: DealerStatus.APPROVED,
-      accessToken: token
+      accessToken: token,
     };
   }
 
@@ -185,10 +162,10 @@ class AuthService {
       buisnessName: params.buisnessName,
       city: params.city,
       state: params.state,
-      gstNumber: params.gstNumber
+      gstNumber: params.gstNumber,
     });
 
-    if(!updatedUser) throw new BadRequestError('Failed to update profile');
+    if (!updatedUser) throw new BadRequestError('Failed to update profile');
 
     return updatedUser;
   }
@@ -201,14 +178,27 @@ class AuthService {
 
   async adminGetUserById(id: string): Promise<IUser> {
     const user = await this._userRepository.getById(id);
-    if(!user) throw new NotFoundError('User not found');
+    if (!user) throw new NotFoundError('User not found');
 
     return user;
   }
 
   async adminUpdateStatus(userId: string, status: DealerStatus): Promise<IUser> {
     const user = await this._userRepository.updateStatus(userId, status);
-    if(!user) throw new NotFoundError('User not found');
+    if (!user) throw new NotFoundError('User not found');
+
+    if (status === DealerStatus.APPROVED && user.email) {
+      try {
+        await mailService.sendEmail(
+          user.email,
+          'account-approved.ejs',
+          { firstName: user.firstName || 'there' },
+          'Your Roop Jewellers account is approved'
+        );
+      } catch (err) {
+        logger.error(`Failed to send approval email to ${user.email}: ${(err as Error).message}`);
+      }
+    }
 
     return user;
   }

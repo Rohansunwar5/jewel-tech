@@ -23,6 +23,10 @@ export class UserRepository {
     return this._model.findOne({ isdCode, phoneNumber });
   }
 
+  async getByEmail(email: string): Promise<IUser | null> {
+    return this._model.findOne({ email: email.toLowerCase().trim() });
+  }
+
   async getById(userId: string): Promise<IUser | null> {
     return this._model.findById(userId);
   }
