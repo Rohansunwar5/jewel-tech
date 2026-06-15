@@ -84,6 +84,29 @@ class AuthService {
     return { success: true, message: 'OTP sent to your email' };
   }
 
+  async login(email: string): Promise<{ success: boolean; message: string }> {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await this._userRepository.getByEmail(normalizedEmail);
+    if (!user) throw new NotFoundError('No account found with this email. Please sign up first.');
+
+    if (user.isBlocked) throw new UnauthorizedError('User is blocked. Contact support');
+
+    const otp = this.generateOtp();
+    await this._otpRepository.createOtp({ email: normalizedEmail, otp, expiresAt: this.getExpiryDate() });
+
+    await mailService.sendEmail(
+      normalizedEmail,
+      'otp-verification.ejs',
+      { firstName: user.firstName || 'there', otp },
+      'Your Roop Jewellers login code'
+    );
+
+    logger.info(`OTP sent to ${normalizedEmail}`);
+
+    return { success: true, message: 'OTP sent to your email' };
+  }
+
   async generateJWTToken(userId: string) {
     const token = jwt.sign({
       _id: userId.toString(),

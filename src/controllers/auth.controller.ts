@@ -10,6 +10,12 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
   next(response);
 };
 
+export const login = async (req: Request, res: Response, next: NextFunction) => {
+  const { email } = req.body;
+  const response = await authService.login(email);
+  next(response);
+};
+
 export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
   const { email, otp } = req.body;
   const response = await authService.verifyOtp({ email, otp });
