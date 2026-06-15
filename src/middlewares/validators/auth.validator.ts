@@ -25,6 +25,11 @@ export const registerValidator = [
   ...validateRequest
 ];
 
+export const loginValidator = [
+  isRequired('email'),
+  ...validateRequest
+];
+
 export const verifyOtpValidator = [
   isRequired('email'),
   isRequired('otp'),
