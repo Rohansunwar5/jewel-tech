@@ -99,7 +99,7 @@ class AuthService {
       normalizedEmail,
       'otp-verification.ejs',
       { firstName: user.firstName || 'there', otp },
-      'Your Roop Jewellers login code'
+      'Your Roop Jewellers verification code'
     );
 
     logger.info(`OTP sent to ${normalizedEmail}`);
