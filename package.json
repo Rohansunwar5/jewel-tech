@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "ts-node-dev --files --respawn src/index.ts",
+    "seed": "ts-node --files src/scripts/seed.ts",
     "prepare": "husky install",
     "clean": "rimraf dist/",
     "build": "npm run clean && tsc",

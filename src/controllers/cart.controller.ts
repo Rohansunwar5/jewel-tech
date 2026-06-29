@@ -30,6 +30,22 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
   next(response);
 };
 
+export const updateCartQuantity = async (req: Request, res: Response, next: NextFunction) => {
+  const authUser = req.user as { _id: string };
+  if (!authUser || !authUser._id) {
+    throw new BadRequestError('User not authenticated');
+  }
+
+  const { productId, quantity } = req.body;
+
+  if (!productId || typeof quantity !== 'number') {
+    throw new BadRequestError('productId and numeric quantity are required');
+  }
+
+  const response = await cartService.updateQuantity(authUser._id, productId, quantity);
+  next(response);
+};
+
 export const removeFromCart = async (req: Request, res: Response, next: NextFunction) => {
   const authUser = req.user as { _id: string };
   if (!authUser || !authUser._id) {

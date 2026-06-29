@@ -1,5 +1,10 @@
 import productModel, { IProduct } from '../models/product.model';
 
+export interface IProductSpec {
+  label?: string;
+  value?: string;
+}
+
 export interface ICreateProductParams {
   name: string;
   sku?: string;
@@ -9,6 +14,7 @@ export interface ICreateProductParams {
   weight?: number;
   purity?: string;
   makingChargesPerGram?: number;
+  specifications?: IProductSpec[];
   isActive?: boolean;
 }
 
@@ -21,6 +27,7 @@ export interface IUpdateProductParams {
   weight?: number;
   purity?: string;
   makingChargesPerGram?: number;
+  specifications?: IProductSpec[];
   isActive?: boolean;
 }
 
@@ -37,6 +44,11 @@ export class ProductRepository {
 
   async getById(id: string): Promise<IProduct | null> {
     return this._model.findById(id);
+  }
+
+  async existsBySku(sku: string): Promise<boolean> {
+    const found = await this._model.exists({ sku });
+    return Boolean(found);
   }
 
   async listAll(includeInactive: boolean): Promise<IProduct[]> {
@@ -56,6 +68,7 @@ export class ProductRepository {
       weight: params.weight,
       purity: params.purity,
       makingChargesPerGram: params.makingChargesPerGram,
+      specifications: params.specifications || [],
       isActive: typeof params.isActive === 'boolean' ? params.isActive : true,
     });
   }
@@ -70,6 +83,7 @@ export class ProductRepository {
       weight?: number;
       purity?: string;
       makingChargesPerGram?: number;
+      specifications?: IProductSpec[];
       isActive?: boolean;
     } = {};
 
@@ -96,6 +110,9 @@ export class ProductRepository {
     }
     if (typeof params.makingChargesPerGram === 'number') {
       update.makingChargesPerGram = params.makingChargesPerGram;
+    }
+    if (params.specifications) {
+      update.specifications = params.specifications;
     }
     if (typeof params.isActive === 'boolean') {
       update.isActive = params.isActive;

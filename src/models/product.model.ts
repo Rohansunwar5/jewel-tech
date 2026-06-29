@@ -32,6 +32,14 @@ const productSchema = new mongoose.Schema(
         makingChargesPerGram: {
             type: Number,
         },
+        // free-form spec rows so the admin can add any detail without a schema change
+        specifications: [
+            {
+                _id: false,
+                label: { type: String, trim: true },
+                value: { type: String, trim: true },
+            }
+        ],
         isActive: {
             type: Boolean,
             default: true
@@ -51,6 +59,7 @@ export interface IProduct extends mongoose.Document {
     weight?: number;
     purity?: string;
     makingChargesPerGram?: number;
+    specifications?: { label?: string; value?: string }[];
     isActive: boolean;
 }
 

@@ -25,7 +25,23 @@ class ProductService {
     if (!params.name || !params.categoryId) {
       throw new BadRequestError('Name and categoryId are required');
     }
+    if (!params.sku || !params.sku.trim()) {
+      params.sku = await this.generateUniqueSku();
+    }
     return this._productRepository.createProduct(params);
+  }
+
+  // Random SKU like "RJ-K7Q2M9" verified absent from the DB
+  private async generateUniqueSku(): Promise<string> {
+    for (let i = 0; i < 10; i++) {
+      const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+      const sku = `RJ-${rand}`;
+      if (!(await this._productRepository.existsBySku(sku))) {
+        return sku;
+      }
+    }
+    // extremely unlikely fallback: timestamp guarantees uniqueness
+    return `RJ-${Date.now().toString(36).toUpperCase()}`;
   }
 
   async adminUpdateProduct(productId: string, params: IUpdateProductParams): Promise<IProduct> {

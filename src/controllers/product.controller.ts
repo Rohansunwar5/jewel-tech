@@ -38,6 +38,7 @@ export const adminCreateProduct = async (req: Request, res: Response, next: Next
     weight,
     purity,
     makingChargesPerGram,
+    specifications,
     isActive
   } = req.body;
 
@@ -50,6 +51,7 @@ export const adminCreateProduct = async (req: Request, res: Response, next: Next
     weight: weight,
     purity: purity,
     makingChargesPerGram: makingChargesPerGram,
+    specifications: specifications,
     isActive: isActive
   });
 
@@ -72,6 +74,7 @@ export const adminUpdateProduct = async (req: Request, res: Response, next: Next
     weight,
     purity,
     makingChargesPerGram,
+    specifications,
     isActive
   } = req.body;
 
@@ -84,6 +87,7 @@ export const adminUpdateProduct = async (req: Request, res: Response, next: Next
     weight: weight,
     purity: purity,
     makingChargesPerGram: makingChargesPerGram,
+    specifications: specifications,
     isActive: isActive
   });
 

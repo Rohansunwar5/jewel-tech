@@ -47,6 +47,20 @@ class CartService {
         return this._cartRepository.updateItems(params.userId, updatedItems);
     }
 
+    async updateQuantity(userId: string, productId: string, quantity: number) {
+        // quantity < 1 means remove the line entirely
+        if (quantity < 1) return this.remove(userId, productId);
+
+        const cart = await this.getCart(userId);
+        const updatedItems = cart.items.map((item) =>
+            item.productId === productId
+                ? { productId: item.productId, quantity, note: item.note }
+                : { productId: item.productId, quantity: item.quantity, note: item.note }
+        );
+
+        return this._cartRepository.updateItems(userId, updatedItems);
+    }
+
     async remove(userId: string, productId: string) {
         const cart = await this.getCart(userId);
         const updatedItems: { productId: string; quantity: number; note?: string }[] = [];
