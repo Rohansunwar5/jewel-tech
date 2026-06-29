@@ -4,10 +4,22 @@
  * Additive & idempotent: upserts categories by name and products by SKU,
  * so existing data is left alone and re-running won't create duplicates.
  */
+/* eslint-disable no-console -- CLI seed script logs progress to stdout */
 import mongoose from 'mongoose';
 import connectDB from '../db';
 import categoryModel from '../models/category.model';
 import productModel from '../models/product.model';
+
+interface SeedProduct {
+  name: string;
+  sku: string;
+  weight: number;
+  purity: string;
+  makingChargesPerGram: number;
+  description: string;
+  images: string[];
+  specifications: { label: string; value: string }[];
+}
 
 const categories = [
   { name: 'Rings', description: 'Handcrafted gold & diamond rings', image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800' },
@@ -19,7 +31,7 @@ const categories = [
 const img = (id: string) => `https://images.unsplash.com/${id}?w=900`;
 
 // products are keyed by category name; categoryId is filled in after categories are created
-const productsByCategory: Record<string, any[]> = {
+const productsByCategory: Record<string, SeedProduct[]> = {
   Rings: [
     {
       name: 'Classic Solitaire Ring', sku: 'RING-001', weight: 4.2, purity: '18K', makingChargesPerGram: 650,
