@@ -4,7 +4,7 @@ import path from 'path';
 const ALLOWED_IMAGE_EXTS = ['png', 'PNG', 'jpg', 'JPG', 'jpeg', 'JPEG', 'gif', 'GIF', 'webp', 'WEBP'];
 
 export const imageUpload = multer({
-  limits: { fileSize: 5 * 1000 * 1000 }, // 5 MB
+  limits: { fileSize: 10 * 1000 * 1000 }, // 10 MB
   storage: multer.memoryStorage(),
   fileFilter: (_req, file, callback) => {
     const ext = path.extname(file.originalname).replace('.', '');
